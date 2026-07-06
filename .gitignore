@@ -1,0 +1,14 @@
+# CEF 배포 (fetch-cef.sh 로 받음, 커밋 안 함)
+ThirdParty/CEF/
+
+# Xcode 생성물
+*.xcodeproj/
+DerivedData/
+build/
+.build/
+
+# macOS
+.DS_Store
+
+# Swift Package Manager clone dir (xcodebuild -clonedSourcePackagesDirPath)
+.spm/

@@ -1,0 +1,198 @@
+name: GoatBrowser
+options:
+  bundleIdPrefix: kr.jmo
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+  defaultConfig: Debug
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: "7.0.0"
+
+settings:
+  base:
+    ONLY_ACTIVE_ARCH: YES
+    ARCHS: arm64
+    VALID_ARCHS: arm64
+    SDKROOT: macosx
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    # We never link the CEF framework directly — it is dlopen'd at runtime via
+    # CefScopedLibraryLoader. Disable dead-strip surprises; keep it minimal.
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGNING_REQUIRED: NO
+    CODE_SIGNING_ALLOWED: NO
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    HEADER_SEARCH_PATHS:
+      - $(SRCROOT)/ThirdParty/CEF/current
+    LIBRARY_SEARCH_PATHS:
+      - $(SRCROOT)/ThirdParty/CEF/current/build_wrapper/libcef_dll_wrapper
+    GCC_C_LANGUAGE_STANDARD: c11
+    CLANG_CXX_LANGUAGE_STANDARD: "c++20"
+    CLANG_CXX_LIBRARY: "libc++"
+    GCC_ENABLE_CPP_EXCEPTIONS: NO
+    GCC_ENABLE_CPP_RTTI: NO
+    CLANG_ENABLE_OBJC_ARC: YES
+
+# ---------------------------------------------------------------------------
+# Shared linker settings for every executable: link the prebuilt wrapper static
+# library + the system frameworks CEF needs. The CEF framework itself is loaded
+# at runtime (NOT linked), exactly like cefsimple.
+# ---------------------------------------------------------------------------
+targets:
+  GoatBrowser:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+        excludes:
+          - "GoatBrowser-Bridging-Header.h"
+      - path: App/GoatBrowser-Bridging-Header.h
+        buildPhase: none
+      - path: Bridge
+      # Reuse the CEF shared external-message-pump implementation directly.
+      - path: ThirdParty/CEF/current/tests/shared/browser/main_message_loop.cc
+        group: CEF/shared
+      - path: ThirdParty/CEF/current/tests/shared/browser/main_message_loop_std.cc
+        group: CEF/shared
+      - path: ThirdParty/CEF/current/tests/shared/browser/main_message_loop_external_pump.cc
+        group: CEF/shared
+      - path: ThirdParty/CEF/current/tests/shared/browser/main_message_loop_external_pump_mac.mm
+        group: CEF/shared
+    settings:
+      base:
+        PRODUCT_NAME: "Goat Browser"
+        PRODUCT_BUNDLE_IDENTIFIER: kr.jmo.goat-browser
+        INFOPLIST_FILE: App/Info.plist
+        SWIFT_OBJC_BRIDGING_HEADER: App/GoatBrowser-Bridging-Header.h
+        SWIFT_VERSION: "6.0"
+        OTHER_LDFLAGS:
+          - "-lcef_dll_wrapper"
+          - "-framework"
+          - "AppKit"
+          - "-framework"
+          - "Cocoa"
+          - "-framework"
+          - "IOSurface"
+          - "-Wl,-rpath,@executable_path/../Frameworks"
+    dependencies:
+      - package: GRDB
+        product: GRDB
+      - target: GoatBrowserHelper
+      - target: GoatBrowserHelperAlerts
+      - target: GoatBrowserHelperGPU
+      - target: GoatBrowserHelperPlugin
+      - target: GoatBrowserHelperRenderer
+    postCompileScripts:
+      - script: "\"$SRCROOT/scripts/copy-framework.sh\""
+        name: "Copy CEF Framework"
+    postBuildScripts:
+      - script: "\"$SRCROOT/scripts/copy-helpers.sh\""
+        name: "Copy Helper Apps"
+      - script: "\"$SRCROOT/scripts/sign-bundle.sh\""
+        name: "Codesign Inside-Out (ad-hoc)"
+
+  GoatBrowserHelper:
+    type: application
+    platform: macOS
+    sources:
+      - path: Helper/helper_main.cc
+    settings:
+      base:
+        PRODUCT_NAME: "Goat Browser Helper"
+        PRODUCT_BUNDLE_IDENTIFIER: kr.jmo.goat-browser.helper
+        INFOPLIST_FILE: Helper/Helper-Info.plist
+        OTHER_LDFLAGS:
+          - "-lcef_dll_wrapper"
+          - "-framework"
+          - "AppKit"
+          - "-framework"
+          - "Cocoa"
+          - "-framework"
+          - "IOSurface"
+
+  GoatBrowserHelperAlerts:
+    type: application
+    platform: macOS
+    sources:
+      - path: Helper/helper_main.cc
+    settings:
+      base:
+        PRODUCT_NAME: "Goat Browser Helper (Alerts)"
+        PRODUCT_BUNDLE_IDENTIFIER: kr.jmo.goat-browser.helper.alerts
+        INFOPLIST_FILE: Helper/Helper-Info.plist
+        OTHER_LDFLAGS:
+          - "-lcef_dll_wrapper"
+          - "-framework"
+          - "AppKit"
+          - "-framework"
+          - "Cocoa"
+          - "-framework"
+          - "IOSurface"
+
+  GoatBrowserHelperGPU:
+    type: application
+    platform: macOS
+    sources:
+      - path: Helper/helper_main.cc
+    settings:
+      base:
+        PRODUCT_NAME: "Goat Browser Helper (GPU)"
+        PRODUCT_BUNDLE_IDENTIFIER: kr.jmo.goat-browser.helper.gpu
+        INFOPLIST_FILE: Helper/Helper-Info.plist
+        OTHER_LDFLAGS:
+          - "-lcef_dll_wrapper"
+          - "-framework"
+          - "AppKit"
+          - "-framework"
+          - "Cocoa"
+          - "-framework"
+          - "IOSurface"
+
+  GoatBrowserHelperPlugin:
+    type: application
+    platform: macOS
+    sources:
+      - path: Helper/helper_main.cc
+    settings:
+      base:
+        PRODUCT_NAME: "Goat Browser Helper (Plugin)"
+        PRODUCT_BUNDLE_IDENTIFIER: kr.jmo.goat-browser.helper.plugin
+        INFOPLIST_FILE: Helper/Helper-Info.plist
+        OTHER_LDFLAGS:
+          - "-lcef_dll_wrapper"
+          - "-framework"
+          - "AppKit"
+          - "-framework"
+          - "Cocoa"
+          - "-framework"
+          - "IOSurface"
+
+  GoatBrowserHelperRenderer:
+    type: application
+    platform: macOS
+    sources:
+      - path: Helper/helper_main.cc
+    settings:
+      base:
+        PRODUCT_NAME: "Goat Browser Helper (Renderer)"
+        PRODUCT_BUNDLE_IDENTIFIER: kr.jmo.goat-browser.helper.renderer
+        INFOPLIST_FILE: Helper/Helper-Info.plist
+        OTHER_LDFLAGS:
+          - "-lcef_dll_wrapper"
+          - "-framework"
+          - "AppKit"
+          - "-framework"
+          - "Cocoa"
+          - "-framework"
+          - "IOSurface"
+
+schemes:
+  GoatBrowser:
+    build:
+      targets:
+        GoatBrowser: all
+    run:
+      config: Debug
